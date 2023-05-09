@@ -4,6 +4,8 @@ import com.google.gson.Gson;
 import javafx.event.ActionEvent;
 import ohm.softa.a08.api.OpenMensaAPI;
 import ohm.softa.a08.api.OpenMensaAPIService;
+import ohm.softa.a08.filter.FilterFactory;
+import ohm.softa.a08.filter.MealsFilter;
 import ohm.softa.a08.model.Meal;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -99,6 +101,24 @@ public class MainController implements Initializable {
 	 */
 	@FXML
 	public void doGetMeals() {
+		var selectedFilter = filterChoiceBox.getSelectionModel().getSelectedItem();
+		MealsFilter filter;
+
+		switch (selectedFilter) {
+			case "Vegetarian":
+				filter = FilterFactory.getStrategy(FilterFactory.FilterType.VEGETARIAN);
+				break;
+			case "No pork":
+				filter = FilterFactory.getStrategy(FilterFactory.FilterType.NO_PORK);
+				break;
+			case "No soy":
+				filter = FilterFactory.getStrategy(FilterFactory.FilterType.NO_SOY);
+				break;
+			default:
+				filter = FilterFactory.getStrategy(FilterFactory.FilterType.ALL);
+				break;
+		}
+
 		api.getMeals(openMensaDateFormat.format(new Date())).enqueue(new Callback<>() {
 			@Override
 			public void onResponse(Call<List<Meal>> call, Response<List<Meal>> response) {
@@ -117,13 +137,7 @@ public class MainController implements Initializable {
 					}
 
 					meals.clear();
-
-					if ("Vegetarian".equals(filterChoiceBox.getValue()))
-						meals.addAll(response.body().stream()
-							.filter(Meal::isVegetarian)
-							.collect(Collectors.toList()));
-					else
-						meals.addAll(response.body());
+					meals.addAll(filter.filter(response.body()));
 				});
 			}
 
@@ -138,27 +152,5 @@ public class MainController implements Initializable {
 				});
 			}
 		});
-	}
-
-	public void applyFilter(ActionEvent event) {
-		switch (filterChoiceBox.getValue()) {
-			case "Vegetarian":
-				meals.setAll(meals.stream()
-					.filter(Meal::isVegetarian)
-					.collect(Collectors.toList()));
-				break;
-			case "No Pork":
-				meals.setAll(meals.stream()
-					.filter(meal -> !meal.getNotes().contains("Schwein"))
-					.collect(Collectors.toList()));
-				break;
-			case "No Soy":
-				meals.setAll(meals.stream()
-					.filter(meal -> !meal.getNotes().contains("Soja"))
-					.collect(Collectors.toList()));
-				break;
-			default:
-				break;
-		}
 	}
 }
